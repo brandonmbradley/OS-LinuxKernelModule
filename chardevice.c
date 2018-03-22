@@ -7,16 +7,16 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/device.h>
-#inlclude <linux/semaphore.h>
+#include <linux/semaphore.h>
 #include <linux/fs.h>
 #include <asm/uaccess.h>
 
 #define DEVICE_NAME "chardevice"
 #define CLASS_NAME  "char"
-#define BUFFERMAX 1000 
+#define BUFFERMAX 10 
 
 /* References: http://www.tldp.org/LDP/lkmpg/2.6/html/
-			   http://derekmolloy.ie/writing-a-linux-kernel-module-part-2-a-character-device/
+	          http://derekmolloy.ie/writing-a-linux-kernel-module-part-2-a-character-device/
 */
 
 
@@ -28,7 +28,7 @@ MODULE_VERSION("1.0");
 
 static int    major, counter = 0;
 static char   response[BUFFERMAX];
-static short  size = 0;   
+static int size = 0;   
 static struct class* chardev_class = NULL;
 static struct device* chardev_device = NULL;
 
@@ -168,7 +168,9 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
 
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset)
 {
-	// Handle overflow conditions
+
+
+// Handle overflow conditions
 	int i = 0;
 	if((size+len)>BUFFERMAX)
 	{
@@ -183,23 +185,31 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 	
 	else
 	{
-		if(strlen(response)<1)
+		if(strlen(response) == 0)
 		{
 			sprintf(response, "%s", buffer);
 		}
 		
 		else
 		{
-			sprintf(response, "%s%s", response, buffer);
+			strcat(response, buffer);
 		}
 		
 		size = strlen(response);
-		printk(KERN_INFO "chardevice: %d characters received from user\n", len,(BUFFERMAX - size));
+		printk(KERN_INFO "chardevice: %d characters received from user [%s].\n", len,buffer);
 		i = len;
 	}
 	
 	return i;
+ 	
+	
 }
+
+
+/*
+	
+*/
+
 
 static int dev_release(struct inode *inodep, struct file *filep)
 {
