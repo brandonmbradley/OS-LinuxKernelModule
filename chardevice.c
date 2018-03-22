@@ -194,7 +194,7 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 		}
 		
 		size = strlen(response);
-		printk(KERN_INFO "chardevice: %d characters received from user\n", len,(BUFFERMAX - size));
+		printk(KERN_INFO "chardevice: %d characters received from user\n", len);
 		i = len;
 	}
 	
