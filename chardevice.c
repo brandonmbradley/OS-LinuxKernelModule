@@ -7,7 +7,7 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/device.h>
-#inlclude <linux/semaphore.h>
+#include <linux/semaphore.h>
 #include <linux/fs.h>
 #include <asm/uaccess.h>
 
