@@ -7,16 +7,15 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/device.h>
-#include <linux/semaphore.h>
 #include <linux/fs.h>
 #include <asm/uaccess.h>
 
 #define DEVICE_NAME "chardevice"
 #define CLASS_NAME  "char"
-#define BUFFERMAX 1000 
+#define BUFFERMAX 10 
 
 /* References: http://www.tldp.org/LDP/lkmpg/2.6/html/
-			   http://derekmolloy.ie/writing-a-linux-kernel-module-part-2-a-character-device/
+	          http://derekmolloy.ie/writing-a-linux-kernel-module-part-2-a-character-device/
 */
 
 
@@ -28,7 +27,7 @@ MODULE_VERSION("1.0");
 
 static int    major, counter = 0;
 static char   response[BUFFERMAX];
-static short  size = 0;   
+static int size = 0;   
 static struct class* chardev_class = NULL;
 static struct device* chardev_device = NULL;
 
@@ -111,65 +110,28 @@ static int dev_open(struct inode *inodep, struct file *filep)
 
 static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *offset)
 {
-	 int errorFlag = 0, i;
-	 
-	 if(size>len)
-	 {
-		 int new_size = (size - len);
-		 errorFlag = copy_to_user(buffer, response, len);
-		 //Success Message
-		 if(errorFlag == 0)
-		 {
-			 printk(KERN_INFO "User has been sent %d chars from system\n", len);
-			 size = new_size;
-			 for(i = 0; i< BUFFERMAX; i++)
-			 {
-				if(i<(BUFFERMAX-len))
-				{
-					response[i]=response[i+len];
-				}
-				else
-				{
-				response[i]= '\0';
-				}
-			 }
-			 return 0;
-		 }
-		 
-		 else
-		 {
-			 printk(KERN_INFO "User was not able to be sent %d chars from system\n", errorFlag);
-			 return -EFAULT;
-		 }
-	 }
-	 
-	 else
-	 {
-		 errorFlag = copy_to_user(buffer, response, size);
-		
-		 if(errorFlag == 0)
-		 {
-			printk(KERN_INFO "User has obtained %d chars from system\n", size);
-			for(i = 0; i < BUFFERMAX; i++)
-			{
-				response[i]= '\0';
-			}
-			
-			return (size = 0);
-		 }
-		 
-		 else
-		 {
-			 printk(KERN_INFO "User was not able to obtain %d chars from system\n", errorFlag);
-			 return -EFAULT;
-		 }
-	 } 
+	int errorCount = 0;
+   
+	errorCount = copy_to_user(buffer, response, size);
+ 
+	if (errorCount==0)
+	{            
+        	printk(KERN_INFO "chardevice: Sent %d characters to the user\n", size);
+        	return (size = 0);  
+	}
+	else 
+	{
+        	printk(KERN_INFO "chardevice: Failed to send %d characters to the user\n", errorCount);
+        	return -EFAULT;             
+   	}
 }
 
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset)
 {
+
+
 	// Handle overflow conditions
-	int i = 0;
+	int i;
 	if((size+len)>BUFFERMAX)
 	{
 		for(i = 0; i<(BUFFERMAX - size); i++)
@@ -177,29 +139,35 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 			response[i+(size)] = buffer[i];
 		}
 		
-		printk(KERN_INFO "Maximum buffer size reached only %d were stored.\n", i);
+		printk(KERN_INFO "Maximum buffer size reached only %d chars were stored of [%s].\n", i, buffer);
+
 		size = strlen(response);
 	}
 	
 	else
 	{
-		if(strlen(response)<1)
+		if(strlen(response) == 0)
 		{
 			sprintf(response, "%s", buffer);
 		}
 		
 		else
 		{
-			sprintf(response, "%s%s", response, buffer);
+			strcat(response, buffer);
 		}
 		
 		size = strlen(response);
-		printk(KERN_INFO "chardevice: %d characters received from user\n", len);
+		printk(KERN_INFO "chardevice: %d characters received from user [%s].\n", len,buffer);
 		i = len;
 	}
 	
 	return i;
+ 	
+	
 }
+
+
+
 
 static int dev_release(struct inode *inodep, struct file *filep)
 {
