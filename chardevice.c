@@ -162,7 +162,7 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 			}
 
 			//-1 for the null character
-			printk(KERN_INFO "Maximum buffer size reached only %i chars were stored of %s.\n", (messageLength-overflow), buffer);
+			printk(KERN_INFO "Maximum buffer size reached only %i chars were stored of %s.\n", i-1, buffer);
 
 			
 			//The new size is the size of the response buffer
@@ -170,7 +170,7 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 
 
 			//Return the actual message length - buffer - 1 for null terminator
-			return (messageLength-overflow);
+			return (i-1);
 		} 
 
 
