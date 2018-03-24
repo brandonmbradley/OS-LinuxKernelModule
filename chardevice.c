@@ -132,7 +132,7 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 		//Init vars
 		int i = 0;
 		int overflow = 0;
-		int messageLength = (strlen(buffer) - 1);
+		int messageLength = strlen(buffer);
 		int messageLessThan = 0;
                
 
