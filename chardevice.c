@@ -132,7 +132,7 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 
 	// Handle overflow conditions
 	int i = 0;
-	*/if((size+len)>BUFFERMAX)
+	/* if((size+len)>BUFFERMAX)
 	{
 		for(i = 0; i<(BUFFERMAX - size); i++)
 		{
