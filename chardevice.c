@@ -131,8 +131,8 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 
 
 	// Handle overflow conditions
-	int i;
-	if((size+len)>BUFFERMAX)
+	int i = 0;
+	*/if((size+len)>BUFFERMAX)
 	{
 		for(i = 0; i<(BUFFERMAX - size); i++)
 		{
@@ -142,10 +142,9 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 		printk(KERN_INFO "Maximum buffer size reached only %d chars were stored of [%s].\n", i, buffer);
 
 		size = strlen(response);
-	}
+	} */
 	
-	else
-	{
+	
 		if(strlen(response) == 0)
 		{
 			sprintf(response, "%s", buffer);
@@ -158,8 +157,8 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 		
 		size = strlen(response);
 		printk(KERN_INFO "chardevice: %d characters received from user [%s].\n", len,buffer);
-		i = len;
-	}
+3		i = len;
+	
 	
 	return i;
  	
