@@ -129,42 +129,115 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset)
 {
 
+		//Init vars
+		int i = 0;
+		int overflow = 0;
+		int messageLength = (strlen(buffer) - 1);
+		int messageLessThan = 0;
+               
 
-	// Handle overflow conditions
-	int i;
-	if((size+len)>BUFFERMAX)
-	{
-		for(i = 0; i<(BUFFERMAX - size); i++)
-		{
-			response[i+(size)] = buffer[i];
+		//If the len is less than the actual message length, we are storing a substring
+	        if (len < messageLength) {
+			
+			//Change the message length to the requested length
+			messageLength = len;
+
+			//Set the flag
+			messageLessThan = 1;
+
 		}
-		
-		printk(KERN_INFO "Maximum buffer size reached only %d chars were stored of [%s].\n", i, buffer);
 
-		size = strlen(response);
-	}
+		//If the message will overflow the buffer
+	 	if((size+messageLength) > BUFFERMAX)
+		{
+  
+			//Calculate the overflow
+			overflow = BUFFERMAX - (size+messageLength);
+
+			//Store what we can in the response buffer
+			for(i = 0; i < (BUFFERMAX - size); i++)
+			{
+				response[i+(size)] = buffer[i];
+				
+			}
+
+			//-1 for the null character
+			printk(KERN_INFO "Maximum buffer size reached only %i chars were stored of %s.\n", (messageLength-overflow), buffer);
+
+			
+			//The new size is the size of the response buffer
+			size = strlen(response);
+
+
+			//Return the actual message length - buffer - 1 for null terminator
+			return (messageLength-overflow);
+		} 
+
+
 	
-	else
-	{
+		//If our buffer is currently empty
 		if(strlen(response) == 0)
 		{
-			sprintf(response, "%s", buffer);
+			//The flag was set for substring message
+			if (messageLessThan == 1) {
+
+
+				//Store the substring message
+				int j = 0;
+
+				for(j = 0; j < messageLength; j++)
+				{
+					response[j] = buffer[j];
+				
+				}
+
+			}
+
+			//If we are normally storing to the empty buffer
+			else {
+
+				sprintf(response, "%s", buffer);
+
+			}
+
+			
 		}
 		
+		//The buffer is not empty
 		else
 		{
-			strcat(response, buffer);
+
+			//We are storing a substring of the message
+			if (messageLessThan == 1) {
+
+				//The available index to store is the size of the buffer + 1, +k on each iteration
+				int k = 0;
+
+				for(k = 0; k < messageLength; k++)
+				{
+					response[size+1+k] = buffer[k];
+				
+				}
+
+			}
+			
+			//We are normally concatenating the message
+			else {
+
+				strcat(response, buffer);
+
+			}
 		}
 		
+		//The size is the length
 		size = strlen(response);
-		printk(KERN_INFO "chardevice: %d characters received from user [%s].\n", len,buffer);
-		i = len;
-	}
+		printk(KERN_INFO "chardevice: %i characters received from user %s.\n", messageLength, buffer);
 	
-	return i;
+		//Return the actual message length
+		return messageLength;
  	
-	
 }
+
 
 
 
