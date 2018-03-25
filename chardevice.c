@@ -1,19 +1,18 @@
 /* Programming Assignment 2: Kernel Module
  * COP4600 - University of Central Florida
  * Group 35 - Alexander Alvarez, Brandon Bradley
- * 
+ *
  */
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/device.h>
-#include <linux/semaphore.h>
 #include <linux/fs.h>
 #include <asm/uaccess.h>
 
 #define DEVICE_NAME "chardevice"
 #define CLASS_NAME  "char"
-#define BUFFERMAX 10 
+#define BUFFERMAX 10
 
 /* References: http://www.tldp.org/LDP/lkmpg/2.6/html/
 	          http://derekmolloy.ie/writing-a-linux-kernel-module-part-2-a-character-device/
@@ -28,7 +27,7 @@ MODULE_VERSION("1.0");
 
 static int    major, counter = 0;
 static char   response[BUFFERMAX];
-static int size = 0;   
+static int size = 0;
 static struct class* chardev_class = NULL;
 static struct device* chardev_device = NULL;
 
@@ -50,22 +49,22 @@ static struct file_operations fops =
 static int __init chardevice_init(void)
 {
 	printk(KERN_INFO "chardevice: Initializing chardevice\n");
- 
+
 	// register_chrdev first agrument 0 for dynamic allocation
 	major = register_chrdev(0, DEVICE_NAME, &fops);
- 
+
 	if(major < 0)
 	{
 		printk(KERN_ALERT "Failed to create register a major number\n");
 		return major;
 	}
-	
-	
+
+
 	printk(KERN_INFO "chardevice: successfully registered with major number #%d\n",major);
- 
+
 	//Populate Class
 	chardev_class = class_create(THIS_MODULE, CLASS_NAME);
- 
+
 
 	// Upon failure to register de-register device
 	if(IS_ERR(chardev_class))
@@ -75,10 +74,10 @@ static int __init chardevice_init(void)
 		return PTR_ERR(chardev_class);
 	}
 	 printk(KERN_INFO "chardevice: class registered successfully\n");
-	 
-	
+
+
 	 chardev_device = device_create(chardev_class, NULL, MKDEV(major, 0), NULL, DEVICE_NAME);
-	
+
 	// Upon failure to create failed de-register device
 	 if(IS_ERR(chardev_device))
 	 {
@@ -111,104 +110,179 @@ static int dev_open(struct inode *inodep, struct file *filep)
 
 static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *offset)
 {
-	 int errorFlag = 0, i;
-	 
+
+	 int errorCounter = 0;
+	 int x;
 	 if(size>len)
 	 {
 		 int new_size = (size - len);
-		 errorFlag = copy_to_user(buffer, response, len);
+		 errorCounter = copy_to_user(buffer, response, len);
 		 //Success Message
-		 if(errorFlag == 0)
+		 if(errorCounter == 0)
 		 {
-			 printk(KERN_INFO "User has been sent %d chars from system\n", len);
-			 size = new_size;
-			 for(i = 0; i< BUFFERMAX; i++)
-			 {
-				if(i<(BUFFERMAX-len))
+		 printk(KERN_INFO "chardevice: User received %d chars from system\n", len);
+		 size = new_size;
+		 	for(x = 0; x<BUFFERMAX; x++)
+		 {
+		 		if(x < (BUFFERMAX-len))
+		 		{
+		 			response[x]=response[x+len];
+		 		}
+	 			else
 				{
-					response[i]=response[i+len];
-				}
-				else
-				{
-				response[i]= '\0';
-				}
-			 }
-			 return 0;
-		 }
-		 
+	 				response[k]= '\0';
+	 			}
+	 		}
+	 		return 0;
+	  }
+	 //Error Message
 		 else
 		 {
-			 printk(KERN_INFO "User was not able to be sent %d chars from system\n", errorFlag);
-			 return -EFAULT;
+		 		printk(KERN_INFO "chardevice: user has failed to receive %d chars from system\n", errorCounter);
+		 		return -EFAULT;
 		 }
 	 }
-	 
 	 else
 	 {
-		 errorFlag = copy_to_user(buffer, response, size);
-		
-		 if(errorFlag == 0)
-		 {
-			printk(KERN_INFO "User has obtained %d chars from system\n", size);
-			for(i = 0; i < BUFFERMAX; i++)
-			{
-				response[i]= '\0';
-			}
-			
-			return (size = 0);
-		 }
-		 
-		 else
-		 {
-			 printk(KERN_INFO "User was not able to obtain %d chars from system\n", errorFlag);
-			 return -EFAULT;
-		 }
-	 } 
+			 errorCounter = copy_to_user(buffer, response, size);
+			 //Success Message
+			 if(errorCounter == 0)
+			 {
+			 		printk(KERN_INFO "chardevice: user has received %d chars from system\n", size);
+				 for(k = 0; k<BUFFERMAX; k++)
+				 {
+				 		response[k]= '\0';
+				 }
+				 return (size = 0);
+			 }
+			 //Error Message
+			 else
+			 {
+				 printk(KERN_INFO "chardevice: user has failed to obtain %d chars from system\n", errorCounter);
+				 return -EFAULT;
+	 		  }
+		}
+
 }
 
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset)
 {
 
 
-// Handle overflow conditions
-	int i = 0;
-	if((size+len)>BUFFERMAX)
-	{
-		for(i = 0; i<(BUFFERMAX - size); i++)
-		{
-			response[i+(size)] = buffer[i];
+		int i = 0;
+		int overflow = 0;
+		int messageLength = strlen(buffer);
+		int messageLessThan = 0;
+
+
+
+		//If the len is less than the actual message length, we are storing a substring
+	   if (len < messageLength)
+		 {
+
+			//Change the message length to the requested length
+			messageLength = len;
+
+			//Set the flag
+			messageLessThan = 1;
+		printk(KERN_INFO "After flag: Message Length = %i , len = %i ",messageLength, len);
+
 		}
-		
-		printk(KERN_INFO "Maximum buffer size reached only %d were stored.\n", i);
-		size = strlen(response);
-	}
-	
-	else
-	{
+
+
+
+		//If the message will overflow the buffer
+	 	if((size+messageLength) > BUFFERMAX)
+		{
+
+			//Calculate the overflow
+			overflow = BUFFERMAX - (size+messageLength);
+
+			//Store what we can in the response buffer
+			for(i = 0; i < (BUFFERMAX - size); i++)
+			{
+				response[i+(size)] = buffer[i];
+
+			}
+
+			//-1 for the null character
+			printk(KERN_INFO "Maximum buffer size reached only %i chars were stored of %s.\n",i, buffer);
+
+
+			//The new size is the size of the response buffer
+			size = strlen(response);
+
+
+			//Return the actual message length - buffer - 1 for null terminator
+			return i-1;
+		}
+
+
+
+		//If our buffer is currently empty
 		if(strlen(response) == 0)
 		{
-			sprintf(response, "%s", buffer);
+			//The flag was set for substring message
+			if (messageLessThan == 1) {
+
+
+				//Store the substring message
+				int j = 0;
+
+				for(j = 0; j < messageLength; j++)
+				{
+					response[j] = buffer[j];
+
+				}
+
+			}
+
+			//If we are normally storing to the empty buffer
+			else {
+
+				sprintf(response, "%s", buffer);
+
+			}
+
+
 		}
-		
+
+		//The buffer is not empty
 		else
 		{
-			strcat(response, buffer);
+
+			//We are storing a substring of the message
+			if (messageLessThan == 1) {
+
+				//The available index to store is the size of the buffer, +k on each iteration
+				int k = 0;
+
+				for(k = 0; k < messageLength; k++)
+				{
+					response[size+k] = buffer[k];
+
+				}
+
+			}
+
+			//We are normally concatenating the message
+			else {
+
+				strcat(response, buffer);
+
+			}
 		}
-		
+
+		//The size is the length
 		size = strlen(response);
-		printk(KERN_INFO "chardevice: %d characters received from user [%s].\n", len,buffer);
-		i = len;
-	}
-	
-	return i;
- 	
-	
+		printk(KERN_INFO "chardevice: %i characters received from user %s.\n", messageLength, buffer);
+
+		//Return the actual message length
+		return messageLength;
+
 }
 
 
-/*
-	
-*/
 
 
 static int dev_release(struct inode *inodep, struct file *filep)
