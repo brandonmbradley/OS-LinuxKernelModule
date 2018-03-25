@@ -97,7 +97,7 @@ static void __exit chardevice_exit(void)
 	 class_unregister(chardev_class);
 	 class_destroy(chardev_class);
 	 unregister_chrdev(major, DEVICE_NAME);
-	 printk(KERN_INFO "chardevice: succsfully removed\n");
+	 printk(KERN_INFO "chardevice: device was successfully removed\n");
 }
 
 
@@ -111,26 +111,32 @@ static int dev_open(struct inode *inodep, struct file *filep)
 static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *offset)
 {
 
-	 int errorCounter = 0;
+	 int bytesnotread = 0;
 	 int x;
-	 if(size>len)
+	
+	 
+	 if(size > len)
 	 {
 		 int new_size = (size - len);
-		 errorCounter = copy_to_user(buffer, response, len);
-		 //Success Message
-		 if(errorCounter == 0)
+
+		 // Will return the amount of bytes that were not successfully copied, returns 0 on sucess
+		 bytesnotread = copy_to_user(buffer, response, len);
+
+		 // copy_to_user was succesful
+
+		 if(bytesnotread == 0)
 		 {
 		 printk(KERN_INFO "chardevice: User received %d chars from system\n", len);
 		 size = new_size;
 		 	for(x = 0; x<BUFFERMAX; x++)
-		 {
+		 	{
 		 		if(x < (BUFFERMAX-len))
 		 		{
 		 			response[x]=response[x+len];
 		 		}
 	 			else
 				{
-	 				response[k]= '\0';
+	 				response[x]= '\0';
 	 			}
 	 		}
 	 		return 0;
@@ -138,30 +144,30 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
 	 //Error Message
 		 else
 		 {
-		 		printk(KERN_INFO "chardevice: user has failed to receive %d chars from system\n", errorCounter);
+		 		printk(KERN_INFO "chardevice: user has failed to receive %d chars from system\n", bytesnotread);
 		 		return -EFAULT;
 		 }
 	 }
 	 else
 	 {
-			 errorCounter = copy_to_user(buffer, response, size);
+			 bytesnotread = copy_to_user(buffer, response, size);
 			 //Success Message
-			 if(errorCounter == 0)
+			 if(bytesnotread == 0)
 			 {
 			 		printk(KERN_INFO "chardevice: user has received %d chars from system\n", size);
-				 for(k = 0; k<BUFFERMAX; k++)
+				 for(x = 0; x<BUFFERMAX; x++)
 				 {
-				 		response[k]= '\0';
+				 		response[x]= '\0';
 				 }
 				 return (size = 0);
 			 }
 			 //Error Message
 			 else
 			 {
-				 printk(KERN_INFO "chardevice: user has failed to obtain %d chars from system\n", errorCounter);
+				 printk(KERN_INFO "chardevice: user has failed to obtain %d chars from system\n", bytesnotread);
 				 return -EFAULT;
 	 		  }
-		}
+	}
 
 }
 
@@ -181,11 +187,11 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 		 {
 
 			//Change the message length to the requested length
-			messageLength = len;
+			messageLength = len ;
 
 			//Set the flag
 			messageLessThan = 1;
-		printk(KERN_INFO "After flag: Message Length = %i , len = %i ",messageLength, len);
+		
 
 		}
 
@@ -206,7 +212,7 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 			}
 
 			//-1 for the null character
-			printk(KERN_INFO "Maximum buffer size reached only %i chars were stored of %s.\n",i, buffer);
+			printk(KERN_INFO "chardevice: Maximum buffer size reached only %i chars were stored of %s.\n",i, buffer);
 
 
 			//The new size is the size of the response buffer
@@ -275,10 +281,10 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 
 		//The size is the length
 		size = strlen(response);
-		printk(KERN_INFO "chardevice: %i characters received from user %s.\n", messageLength, buffer);
+		printk(KERN_INFO "chardevice: %i characters received from user %s.\n", messageLength-1, buffer);
 
 		//Return the actual message length
-		return messageLength;
+		return messageLength-1;
 
 }
 
