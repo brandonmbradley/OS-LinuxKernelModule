@@ -1,0 +1,22 @@
+HOW TO RUN:
+
+Test using the included file:
+1. Open a terminal in the same directory as chardevice.c and Makefile
+2. run the command: "make"
+3. run the command: "sudo insmod chardevice.ko"
+4. run the command: "sudo ./test"
+5. the test program will run: type in a string and have it read back to you
+6. to remove the device run the command: "sudo rmmod chardevice"
+7. to view logs run the command: "dmesg"
+
+Test using cat and echo:
+1. Open a terminal in the same directory as chardevice.c and Makefile
+2. run the command: "make"
+3. run the command: "sudo insmod chardevice.ko"
+4. run the command: "sudo -i"
+5. to view logs run the command: "dmesg"
+6. to send a string run the command: echo "your string goes here" > /dev/chardevice
+7. to view logs run the command: "dmesg"
+8. to read a string run the commadn: cat /dev/chardevice then use the command: dmesg
+9. to remove the device run the command: "sudo rmmod chardevice"
+
